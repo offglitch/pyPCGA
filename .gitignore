@@ -7,3 +7,5 @@ build
 dist
 pyPCGA.egg-info
 .ipynb_checkpoints
+examples/multiphase_csim/support_files/mph2May20e
+examples/multiphase_csim/support_files/xmpMay20e

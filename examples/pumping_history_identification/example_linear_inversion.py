@@ -16,6 +16,8 @@ if __name__ == '__main__':  # for windows application
     xmin = np.array([0])
     xmax = np.array([1000])
 
+    import pdb
+    pdb.set_trace()
     # covairance kernel and scale parameters
 
     prior_std = 0.04
