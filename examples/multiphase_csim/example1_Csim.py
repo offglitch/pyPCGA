@@ -8,7 +8,8 @@ import numpy as np
 import csim as csim 
 from pyPCGA import PCGA
 import math
-
+import sys
+import os
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -21,7 +22,10 @@ Example file for running PCGA with COMPSIM for DNAPL identification
 
 if __name__ == '__main__':  # for windows application
     # model domain and discretization
-     
+    
+    #import pdb
+    #pdb.set_trace()
+
     nx = [80, 40]
     m=np.prod(nx)
     
@@ -38,8 +42,11 @@ if __name__ == '__main__':  # for windows application
     pts = np.hstack((XX.ravel()[:, np.newaxis], YY.ravel()[:, np.newaxis]))
     
     # Observations
-    obs = np.loadtxt('obs.txt')
-    std_obs = 2.5
+    obs = np.loadtxt('obs_true.txt')
+    # std_obs = 0.001
+    std_obs = float(sys.argv[1])
+    case_id = sys.argv[2]
+    os.mkdir(case_id)
     std_obs = std_obs * np.ones_like(obs)
 
     xlocs = np.arange(15,70,5)
@@ -47,7 +54,7 @@ if __name__ == '__main__':  # for windows application
     
     
     csim_exec = 'mphMay20e'
-    input_dir = "./input_files"
+    input_dir = "./support_files"
     sim_dir = './simul'
     
     forward_model_params = {'csim_exec': csim_exec, 'input_dir': input_dir,
@@ -69,7 +76,7 @@ if __name__ == '__main__':  # for windows application
     s_true = np.array(s_true).reshape(-1, 1)  # make it 2D array
     
     # covariance kernel and scale parameters
-    prior_std = 0.04
+    prior_std = 1.0
     prior_cov_scale = np.array([5.0, 2.5])
     
     
@@ -90,14 +97,15 @@ if __name__ == '__main__':  # for windows application
     
     # parameters for the inversion 
     params = {'R': std_obs ** 2, 'n_pc': 50,
-            'maxiter': 10, 'restol': 0.01,
+            'maxiter': 5, 'restol': 0.01,
             'matvec': 'FFT', 'xmin': xmin, 'xmax': xmax, 'N': N,
             'prior_std': prior_std, 'prior_cov_scale': prior_cov_scale,
             'kernel': kernel, 'post_cov': "diag",
             'precond': True, 'LM': True,
             'parallel': True, 'linesearch': True,
             'forward_model_verbose': False, 'verbose': False,
-            'iter_save': True}
+            'iter_save': True,'precision': 1e-4,
+            'LM_smin': -34, 'LM_smax': -14}
 
     # params['objeval'] = False, if true, it will compute accurate objective function
     # params['ncores'] = 36, with parallell True, it will determine maximum physcial core unless specified
@@ -120,18 +128,34 @@ if __name__ == '__main__':  # for windows application
 
     post_diagv[post_diagv < 0.] = 0.  # just in case
     post_std = np.sqrt(post_diagv)
+    post_std2d = post_std.reshape(nrow, ncol)
 
-    fig = plt.figure()
+    #fig = plt.figure()
+    #plot properties
+    fig, ax = plt.subplots(1,1)
+    fig.suptitle('{}'.format('Estimated logk'), fontsize = 12)
+    cax = ax.imshow(s_hat2d.T, extent=[0,5,0,2.5], origin='upper')
+    plt.xlabel('x (m)')
+    plt.ylabel('y (m)')
+    cbar = fig.colorbar(cax, orientation='vertical') 
     #plt.plot(x,s_hat,'k-',label='estimated')
     #plt.plot(x,s_hat + 2.*post_std,'k--',label='95%')
     #plt.plot(x,s_hat - 2.*post_std,'k--',label='')
     #plt.plot(x,s_true,'r-',label='true')
-    plt.title('Estimated logk')
-    plt.xlabel('x (cm)')
-    plt.ylabel('y (cm)')
+    plt.xlabel('x (m)')
+    plt.ylabel('z (m)')
     #plt.legend()
-    fig.savefig('best.png')
+    fig.savefig(case_id + '/best.png', dpi = 300)
     plt.close(fig)
+
+    #fit = plt.figure()
+    figs, axs = plt.subplots(1,1)
+    figs.suptitle('{}'.format('Posterior uncertainty in logk'), fontsize = 12)
+    cax = axs.imshow(post_std2d.T, extent=[0,5,0,2.5], origin='upper')
+    plt.xlabel('x (m)')
+    plt.ylabel('z (m)')
+    figs.savefig(case_id + '/unc.png', dpi = 300)
+    plt.close(figs)
 
     nobs = prob.obs.shape[0]
     fig = plt.figure()
@@ -146,7 +170,7 @@ if __name__ == '__main__':  # for windows application
     axes = plt.gca()
     axes.set_xlim([math.floor(minobs), math.ceil(maxobs)])
     axes.set_ylim([math.floor(minobs), math.ceil(maxobs)])
-    fig.savefig('obs.png')
+    fig.savefig(case_id + '/obs.png', dpi = 300)
     # plt.show()
     plt.close(fig)
 
@@ -155,6 +179,20 @@ if __name__ == '__main__':  # for windows application
     plt.xticks(np.linspace(1,len(prob.objvals),len(prob.objvals)))
     plt.title('obj values over iterations')
     plt.axis('tight')
-    fig.savefig('obj.png')
+    fig.savefig(case_id + '/obj.png')
     plt.close(fig)
+    
+
+    # moving result files to folder case_id
+    import glob
+    import shutil 
+    for f in glob.glob(r'shat*'):
+        shutil.move(f, case_id)
+
+    for f in glob.glob(r'simulobs*'):
+        shutil.move(f, case_id)
+
+    shutil.move('postv.txt',case_id)
+
+
 

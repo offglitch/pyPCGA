@@ -10,6 +10,9 @@ import math
 
 if __name__ == '__main__':  # for windows application  
     # model domain and discretization
+    import pdb
+    pdb.set_trace()
+    
     m = 10001
     N = np.array([m])
     dx = np.array([0.1])
@@ -48,7 +51,7 @@ if __name__ == '__main__':  # for windows application
             'prior_std': prior_std, 'prior_cov_scale': prior_cov_scale,
             'kernel': kernel, 'post_cov': "diag",
             'precond': True, 'LM': True,
-            'parallel': True, 'linesearch': True,
+            'parallel': False, 'linesearch': True,
             'forward_model_verbose': False, 'verbose': False,
             'iter_save': True}
 
